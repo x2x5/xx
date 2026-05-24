@@ -47,6 +47,7 @@ function CanvasInner() {
   const { screenToFlowPosition, fitView, setViewport } = useReactFlow();
   const isDragging = useRef(false);
   const dragStartPositions = useRef<Record<string, { x: number; y: number }>>({});
+  const lastClickRef = useRef<{ time: number; x: number; y: number } | null>(null);
 
   // Sync store nodes/edges to ReactFlow
   useEffect(() => {
@@ -182,6 +183,51 @@ function CanvasInner() {
     [setEditingNodeId]
   );
 
+  const onPaneClick = useCallback(
+    (event: React.MouseEvent) => {
+      if (editingNodeId) {
+        setEditingNodeId(null);
+        return;
+      }
+
+      const now = Date.now();
+      const x = event.clientX;
+      const y = event.clientY;
+
+      if (
+        lastClickRef.current &&
+        now - lastClickRef.current.time < 350
+      ) {
+        const dx = Math.abs(x - lastClickRef.current.x);
+        const dy = Math.abs(y - lastClickRef.current.y);
+        if (dx < 10 && dy < 10) {
+          lastClickRef.current = null;
+
+          const position = screenToFlowPosition({ x, y });
+
+          const node: MindMapNode = {
+            id: generateId('node'),
+            type: 'text',
+            position,
+            size: { width: 220, height: 120 },
+            data: { content: '', renderMode: 'mixed' },
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          };
+
+          pushHistory();
+          const store = useMindMapStore.getState();
+          store.createNode(node);
+          return;
+        }
+      }
+
+      lastClickRef.current = { time: now, x, y };
+      setEditingNodeId(null);
+    },
+    [editingNodeId, screenToFlowPosition, pushHistory, setEditingNodeId]
+  );
+
   const onViewportChange = useCallback(
     (viewport: Viewport) => {
       if (activeTab) {
@@ -221,39 +267,6 @@ function CanvasInner() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [editingNodeId]);
-
-  // Double click on pane to create node
-  useEffect(() => {
-    const handleDblClick = (e: MouseEvent) => {
-      if (editingNodeId) return;
-      const target = e.target as HTMLElement;
-      if (!target.closest('.react-flow__pane')) return;
-      if (target.closest('.react-flow__node')) return;
-      if (target.closest('.react-flow__edge')) return;
-
-      const position = screenToFlowPosition({
-        x: e.clientX,
-        y: e.clientY,
-      });
-
-      const node: MindMapNode = {
-        id: generateId('node'),
-        type: 'text',
-        position,
-        size: { width: 220, height: 120 },
-        data: { content: '', renderMode: 'mixed' },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
-
-      const store = useMindMapStore.getState();
-      store.pushHistory();
-      store.createNode(node);
-    };
-
-    window.addEventListener('dblclick', handleDblClick);
-    return () => window.removeEventListener('dblclick', handleDblClick);
-  }, [editingNodeId, screenToFlowPosition]);
 
   // Paste handler
   useEffect(() => {
@@ -383,7 +396,7 @@ function CanvasInner() {
       onNodesDelete={onNodesDelete}
       onEdgesDelete={onEdgesDelete}
       onSelectionChange={onSelectionChange}
-      onPaneClick={() => setEditingNodeId(null)}
+      onPaneClick={onPaneClick}
       onNodeDoubleClick={onNodeDoubleClick}
       onViewportChange={onViewportChange}
       nodeTypes={nodeTypes}

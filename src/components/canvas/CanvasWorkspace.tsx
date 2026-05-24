@@ -17,7 +17,7 @@ import '@xyflow/react/dist/style.css';
 import { useMindMapStore } from '../../hooks/useMindMapStore';
 import { generateId } from '../../lib/id';
 import { saveMindMapFile } from '../../lib/file';
-import type { MindMapNode, MindMapEdge, Viewport } from '../../types/mindmap';
+import type { MindMapEdge, Viewport } from '../../types/mindmap';
 import TextNode from './TextNode';
 import ImageNode from './ImageNode';
 
@@ -48,7 +48,6 @@ function CanvasInner() {
   const { screenToFlowPosition, fitView, setViewport } = useReactFlow();
   const isDragging = useRef(false);
   const dragStartPositions = useRef<Record<string, { x: number; y: number }>>({});
-  const lastClickRef = useRef<{ time: number; x: number; y: number } | null>(null);
 
   // Sync store nodes/edges to ReactFlow
   useEffect(() => {
@@ -182,50 +181,11 @@ function CanvasInner() {
     [setEditingNodeId]
   );
 
-  const onPaneClick = useCallback(
-    (event: React.MouseEvent) => {
-      if (editingNodeId) {
-        setEditingNodeId(null);
-        return;
-      }
-
-      const now = Date.now();
-      const x = event.clientX;
-      const y = event.clientY;
-
-      if (
-        lastClickRef.current &&
-        now - lastClickRef.current.time < 350
-      ) {
-        const dx = Math.abs(x - lastClickRef.current.x);
-        const dy = Math.abs(y - lastClickRef.current.y);
-        if (dx < 10 && dy < 10) {
-          lastClickRef.current = null;
-
-          const position = screenToFlowPosition({ x, y });
-
-          const node: MindMapNode = {
-            id: generateId('node'),
-            type: 'text',
-            position,
-            size: { width: 200, height: 36 },
-            data: { content: '', renderMode: 'mixed' },
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-          };
-
-          pushHistory();
-          const store = useMindMapStore.getState();
-          store.createNode(node);
-          return;
-        }
-      }
-
-      lastClickRef.current = { time: now, x, y };
+  const onPaneClick = useCallback(() => {
+    if (editingNodeId) {
       setEditingNodeId(null);
-    },
-    [editingNodeId, screenToFlowPosition, pushHistory, setEditingNodeId]
-  );
+    }
+  }, [editingNodeId, setEditingNodeId]);
 
   const onViewportChange = useCallback(
     (viewport: Viewport) => {
@@ -235,6 +195,42 @@ function CanvasInner() {
     },
     [activeTab, updateTabViewport]
   );
+
+  // Double-click on canvas to create node
+  useEffect(() => {
+    const container = document.querySelector('.react-flow') as HTMLElement | null;
+    if (!container) return;
+
+    const handleDblClick = (e: Event) => {
+      if (editingNodeId) return;
+
+      const mouseEvent = e as MouseEvent;
+      const target = mouseEvent.target as HTMLElement;
+      if (target.closest('.react-flow__node')) return;
+      if (target.closest('.react-flow__edge')) return;
+      if (target.closest('.react-flow__controls')) return;
+
+      const position = screenToFlowPosition({
+        x: mouseEvent.clientX,
+        y: mouseEvent.clientY,
+      });
+
+      const store = useMindMapStore.getState();
+      store.pushHistory();
+      store.createNode({
+        id: generateId('node'),
+        type: 'text',
+        position,
+        size: { width: 200, height: 36 },
+        data: { content: '', renderMode: 'mixed' },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+    };
+
+    container.addEventListener('dblclick', handleDblClick);
+    return () => container.removeEventListener('dblclick', handleDblClick);
+  }, [editingNodeId, screenToFlowPosition]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -466,7 +462,6 @@ function CanvasInner() {
       onNodeDoubleClick={onNodeDoubleClick}
       onViewportChange={onViewportChange}
       nodeTypes={nodeTypes}
-      fitView
       attributionPosition="bottom-right"
       deleteKeyCode={null}
       multiSelectionKeyCode="Shift"

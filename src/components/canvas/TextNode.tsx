@@ -71,9 +71,10 @@ export default function TextNode({ id, data, selected }: NodeProps) {
             wordBreak: 'break-word',
             fontSize: 14,
             lineHeight: 1.5,
+            color: nodeData.content ? '#333' : '#999',
           }}
         >
-          {nodeData.content || <span style={{ color: '#999' }}>双击编辑</span>}
+          {nodeData.content || '双击编辑'}
         </div>
       );
     }
@@ -95,29 +96,41 @@ export default function TextNode({ id, data, selected }: NodeProps) {
   return (
     <div
       style={{
-        minWidth: 120,
-        minHeight: 60,
-        maxWidth: 400,
+        width: 200,
+        minHeight: 36,
+        maxWidth: 260,
         backgroundColor: selected ? '#e3f2fd' : '#fff',
-        border: selected ? '2px solid #2196f3' : '1px solid #ccc',
-        borderRadius: 8,
-        padding: 12,
+        border: selected ? '1.5px solid #2196f3' : '1px solid #ddd',
+        borderRadius: 6,
+        padding: '8px 12px',
         boxShadow: selected
-          ? '0 4px 12px rgba(33,150,243,0.3)'
-          : '0 2px 6px rgba(0,0,0,0.1)',
+          ? '0 2px 8px rgba(33,150,243,0.2)'
+          : '0 1px 3px rgba(0,0,0,0.08)',
         cursor: isEditing ? 'text' : 'grab',
-        transition: 'box-shadow 0.15s, border-color 0.15s',
+        transition: 'box-shadow 0.15s, border-color 0.15s, background-color 0.15s',
       }}
     >
       <Handle
         type="target"
         position={Position.Top}
-        style={{ background: '#2196f3', width: 8, height: 8 }}
+        style={{
+          background: selected ? '#2196f3' : '#bbb',
+          width: 6,
+          height: 6,
+          border: '1.5px solid #fff',
+          borderRadius: '50%',
+        }}
       />
       <Handle
         type="target"
         position={Position.Left}
-        style={{ background: '#2196f3', width: 8, height: 8 }}
+        style={{
+          background: selected ? '#2196f3' : '#bbb',
+          width: 6,
+          height: 6,
+          border: '1.5px solid #fff',
+          borderRadius: '50%',
+        }}
       />
 
       {isEditing ? (
@@ -129,7 +142,7 @@ export default function TextNode({ id, data, selected }: NodeProps) {
           onBlur={handleBlur}
           style={{
             width: '100%',
-            minHeight: 60,
+            minHeight: 20,
             border: 'none',
             outline: 'none',
             resize: 'none',
@@ -139,6 +152,7 @@ export default function TextNode({ id, data, selected }: NodeProps) {
             fontFamily: 'inherit',
             padding: 0,
             margin: 0,
+            color: '#333',
           }}
         />
       ) : (
@@ -148,12 +162,24 @@ export default function TextNode({ id, data, selected }: NodeProps) {
       <Handle
         type="source"
         position={Position.Bottom}
-        style={{ background: '#2196f3', width: 8, height: 8 }}
+        style={{
+          background: selected ? '#2196f3' : '#bbb',
+          width: 6,
+          height: 6,
+          border: '1.5px solid #fff',
+          borderRadius: '50%',
+        }}
       />
       <Handle
         type="source"
         position={Position.Right}
-        style={{ background: '#2196f3', width: 8, height: 8 }}
+        style={{
+          background: selected ? '#2196f3' : '#bbb',
+          width: 6,
+          height: 6,
+          border: '1.5px solid #fff',
+          borderRadius: '50%',
+        }}
       />
     </div>
   );

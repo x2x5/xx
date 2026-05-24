@@ -8,6 +8,7 @@ import type {
   HistoryState,
 } from '../types/mindmap';
 import { generateId } from '../lib/id';
+import { layoutNodes } from '../lib/layout';
 
 const DEFAULT_VIEWPORT: Viewport = { x: 0, y: 0, zoom: 1 };
 
@@ -445,23 +446,20 @@ export const useMindMapStore = create<MindMapStore>((set, get) => ({
   autoLayout: (direction = 'LR') =>
     set((state) => {
       const tab = state.file.tabs.find((t) => t.id === state.file.activeTabId);
-      if (!tab) return state;
+      if (!tab || tab.nodes.length === 0) return state;
 
-      import('../lib/layout').then(({ layoutNodes }) => {
-        const newNodes = layoutNodes(tab.nodes, tab.edges, direction);
-        set((s) => ({
-          file: {
-            ...s.file,
-            tabs: s.file.tabs.map((t) =>
-              t.id === tab.id
-                ? { ...t, nodes: newNodes, updatedAt: new Date().toISOString() }
-                : t
-            ),
-          },
-        }));
-      });
+      const newNodes = layoutNodes(tab.nodes, tab.edges, direction);
 
-      return state;
+      return {
+        file: {
+          ...state.file,
+          tabs: state.file.tabs.map((t) =>
+            t.id === tab.id
+              ? { ...t, nodes: newNodes, updatedAt: new Date().toISOString() }
+              : t
+          ),
+        },
+      };
     }),
 
   loadFile: (file) =>

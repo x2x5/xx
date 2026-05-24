@@ -60,8 +60,6 @@ function CanvasInner() {
       position: n.position,
       data: n.data,
       selected: false,
-      width: n.size.width,
-      height: n.size.height,
     }));
 
     const flowEdges: Edge[] = activeTab.edges.map((e) => ({
@@ -210,7 +208,7 @@ function CanvasInner() {
             id: generateId('node'),
             type: 'text',
             position,
-            size: { width: 220, height: 120 },
+            size: { width: 200, height: 36 },
             data: { content: '', renderMode: 'mixed' },
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),

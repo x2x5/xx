@@ -1,4 +1,4 @@
-import Dagre from 'dagre';
+import * as dagre from 'dagre';
 import type { MindMapNode, MindMapEdge, Viewport } from '../types/mindmap';
 
 type LayoutDirection = 'LR' | 'TB' | 'GRID';
@@ -24,7 +24,7 @@ function dagreLayout(
   edges: MindMapEdge[],
   direction: 'LR' | 'TB'
 ): MindMapNode[] {
-  const g = new Dagre.graphlib.Graph();
+  const g = new dagre.graphlib.Graph();
   g.setDefaultEdgeLabel(() => ({}));
   g.setGraph({
     rankdir: direction,
@@ -45,7 +45,7 @@ function dagreLayout(
     g.setEdge(edge.source, edge.target);
   }
 
-  Dagre.layout(g);
+  dagre.layout(g);
 
   return nodes.map((node) => {
     const layoutNode = g.node(node.id);

@@ -16,6 +16,7 @@ import {
 import '@xyflow/react/dist/style.css';
 import { useMindMapStore } from '../../hooks/useMindMapStore';
 import { generateId } from '../../lib/id';
+import { saveMindMapFile } from '../../lib/file';
 import type { MindMapNode, MindMapEdge, Viewport } from '../../types/mindmap';
 import TextNode from './TextNode';
 import ImageNode from './ImageNode';
@@ -240,8 +241,83 @@ function CanvasInner() {
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (editingNodeId) return;
+      if (editingNodeId) {
+        // Only allow Escape to exit editing mode
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setEditingNodeId(null);
+        }
+        return;
+      }
 
+      const hasCtrl = e.ctrlKey || e.metaKey;
+
+      // Save: Ctrl/Cmd + S
+      if (hasCtrl && e.key === 's') {
+        e.preventDefault();
+        const store = useMindMapStore.getState();
+        try {
+          saveMindMapFile(store.file);
+          store.showToast('文件已保存', 'success');
+        } catch {
+          store.showToast('保存失败', 'error');
+        }
+        return;
+      }
+
+      // Open: Ctrl/Cmd + O
+      if (hasCtrl && e.key === 'o') {
+        e.preventDefault();
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.mindmap.json,.json';
+        input.onchange = async (ev) => {
+          const target = ev.target as HTMLInputElement;
+          const fileObj = target.files?.[0];
+          if (!fileObj) return;
+          try {
+            const text = await fileObj.text();
+            const data = JSON.parse(text);
+            if (!data.schemaVersion || !data.tabs) {
+              useMindMapStore.getState().showToast('无法识别该画布文件', 'error');
+              return;
+            }
+            useMindMapStore.getState().loadFile(data);
+            useMindMapStore.getState().showToast('文件已加载', 'success');
+          } catch {
+            useMindMapStore.getState().showToast('文件格式不正确', 'error');
+          }
+        };
+        input.click();
+        return;
+      }
+
+      // Undo: Ctrl/Cmd + Z
+      if (hasCtrl && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        useMindMapStore.getState().undo();
+        return;
+      }
+
+      // Redo: Ctrl/Cmd + Shift + Z  or  Ctrl/Cmd + Y
+      if ((hasCtrl && e.key === 'z' && e.shiftKey) || (hasCtrl && e.key === 'y')) {
+        e.preventDefault();
+        useMindMapStore.getState().redo();
+        return;
+      }
+
+      // Select All: Ctrl/Cmd + A
+      if (hasCtrl && e.key === 'a') {
+        e.preventDefault();
+        const store = useMindMapStore.getState();
+        const tab = store.getActiveTab();
+        if (tab) {
+          store.setSelectedNodeIds(tab.nodes.map((n) => n.id));
+        }
+        return;
+      }
+
+      // Delete selected nodes/edges
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const store = useMindMapStore.getState();
         if (store.selectedNodeIds.length > 0) {
@@ -252,21 +328,13 @@ function CanvasInner() {
           store.pushHistory();
           store.deleteEdges(store.selectedEdgeIds);
         }
-      }
-
-      if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-        e.preventDefault();
-        const store = useMindMapStore.getState();
-        const tab = store.getActiveTab();
-        if (tab) {
-          store.setSelectedNodeIds(tab.nodes.map((n) => n.id));
-        }
+        return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [editingNodeId]);
+  }, [editingNodeId, setEditingNodeId]);
 
   // Paste handler
   useEffect(() => {
